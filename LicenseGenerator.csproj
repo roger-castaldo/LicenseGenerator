@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <AssemblyName>LicenseGenerator</AssemblyName>
+    <RootNamespace>Org.Reddragonit.LicenseGenerator</RootNamespace>
+  </PropertyGroup>
+
+</Project>
