@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Org.Reddragonit.LicenseGenerator.Interfaces;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -10,21 +12,20 @@ namespace Org.Reddragonit.LicenseGenerator
         private License _license;
         private bool _isValid;
 
-        public SignedLicense(string licenseString,string publicKey,out bool isValid)
+        public SignedLicense(string licenseString, string publicKey, out bool isValid)
+            : this(licenseString,publicKey,null,out isValid)
+        {}
+
+        public SignedLicense(string licenseString,string publicKey,ILicensePart[] parts,out bool isValid)
         {
-            _license = new License();
-            string sdata;
-            try
+            _license = new License(true);
+            _license.Load(licenseString, publicKey, out _isValid);
+            if (parts != null)
             {
-                RSACryptoServiceProvider csp = new RSACryptoServiceProvider(Constants.KeySize);
-                csp.ImportParameters(Utility.ConvertStringToKey(publicKey));
-                sdata = System.Text.ASCIIEncoding.ASCII.GetString(csp.Decrypt(Convert.FromBase64String(licenseString), false));
-                _license.Decode(sdata, out isValid);
-            }catch(Exception e)
-            {
-                isValid = false;
+                foreach (ILicensePart ilp in parts)
+                    _license.AddAdditionalPart(ilp);
             }
-            _isValid = isValid;
+            isValid = _isValid;
         }
 
         public bool HasApplication(string applicationID)
@@ -32,18 +33,33 @@ namespace Org.Reddragonit.LicenseGenerator
             return _isValid && _license.HasApplication(applicationID);
         }
 
-        public DateTime? ValidStart
+        public bool HasSerialNumber(string serialNumber)
         {
-            get { return _license.ValidStart; }
+            return _isValid && _license.HasSerialNumber(serialNumber);
         }
-        public DateTime? ValidEnd
+
+        public DateTime? StartDate
         {
-            get { return _license.ValidEnd; }
+            get { return _license.StartDate; }
+        }
+        public DateTime? EndDate
+        {
+            get { return _license.EndDate; }
         }
 
         public object this[string property]
         {
             get { return _license[property]; }
+        }
+
+        public void AddAdditionalPart(ILicensePart part)
+        {
+            _license.AddAdditionalPart(part);
+        }
+
+        public ILicensePart[] AdditionalParts
+        {
+            get { return _license.AdditionalParts; }
         }
     }
 }

@@ -17,6 +17,16 @@ namespace Org.Reddragonit.LicenseGenerator
             _random = new MT19937(DateTime.Now.Ticks);
         }
 
+        public static byte[] RandomBytes(int length)
+        {
+            byte[] ret;
+            lock (_random)
+            {
+                ret = _random.NextBytes(length);
+            }
+            return ret;
+        }
+
         public static string RandomString(string charsAllowed,int length)
         {
             string ret = "";

@@ -1,126 +1,244 @@
-﻿using System;
+﻿using Org.Reddragonit.LicenseGenerator.Interfaces;
+using Org.Reddragonit.LicenseGenerator.LicenseParts;
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
+using System.Xml;
 
 namespace Org.Reddragonit.LicenseGenerator
 {
     internal class License
     {
-        private List<SerialNumber> _serialNumbers;
-        private DateTime? _validStart;
-        public DateTime? ValidStart
-        {
-            get { return _validStart; }
-            set { _validStart = value; }
-        }
-        private DateTime? _validEnd;
-        public DateTime? ValidEnd
-        {
-            get { return _validEnd; }
-            set { _validEnd = value; }
-        }
-        private Dictionary<string, object> _attributes;
+        private const string _emptyDoc = @"<?xml version=""1.0""?>
+<license>
+</license>";
+        private bool _readonly;
+        private XmlDocument _currentDoc = new XmlDocument();
 
-        public License()
+        private List<ILicensePart> _additionalParts;
+        public ILicensePart[] AdditionalParts
         {
-            _serialNumbers = new List<SerialNumber>();
-            _attributes = new Dictionary<string, object>();
+            get { return _additionalParts.ToArray(); }
+        }
+
+        private SerialNumbers _serialNumbers=null;
+        private StartDate _startDate=null;
+        private EndDate _endDate=null;
+        private CustomProperties _properties = null;
+
+        private ILicensePart[] _AllParts
+        {
+            get
+            {
+                ILicensePart[] ret = new ILicensePart[4 + _additionalParts.Count];
+                ret[0] = _serialNumbers;
+                ret[1] = _startDate;
+                ret[2] = _endDate;
+                ret[3] = _properties;
+                if (_additionalParts.Count > 0)
+                    _additionalParts.CopyTo(ret, 4);
+                return ret;
+            }
+        }
+
+        public License(bool ReadOnly)
+        {
+            _readonly = ReadOnly;
+            _currentDoc.LoadXml(_emptyDoc);
+            _serialNumbers = new SerialNumbers();
+            _startDate = new StartDate();
+            _endDate = new EndDate();
+            _properties = new CustomProperties();
+            _additionalParts = new List<ILicensePart>();
+        }
+
+        public DateTime? StartDate
+        {
+            get { return _startDate.Value; }
+            set { 
+                _startDate.Value = value;
+                _UpdateDoc();
+            }
+        }
+
+        public DateTime? EndDate
+        {
+            get { return _endDate.Value; }
+            set { 
+                _endDate.Value = value;
+                _UpdateDoc();
+            }
         }
 
         public void AddApplication(string applicationID)
         {
-            _serialNumbers.Add(new SerialNumber(applicationID));
+            _serialNumbers.AddSerialNumber(applicationID);
+            _UpdateDoc();
         }
 
         public bool HasApplication(string applicationID)
         {
-            applicationID = applicationID.ToUpper();
-            if (_serialNumbers != null)
-            {
-                foreach (SerialNumber sn in _serialNumbers)
-                {
-                    if (sn.IsValid && sn.ApplicationID == applicationID)
-                    {
-                        return true;
-                    }
-                }
-            }
-            return false;
+            return _serialNumbers.HasApplication(applicationID);
+        }
+
+        internal bool HasSerialNumber(string serialNumber)
+        {
+            return _serialNumbers.HasSerialNumber(serialNumber);
         }
 
         public object this[string property]
         {
-            get { return (_attributes.ContainsKey(property) ? _attributes[property] : null); }
+            get { return _properties[property]; }
             set { 
-                if (_attributes.ContainsKey(property))
-                    _attributes.Remove(property);
-                if (value != null)
-                    _attributes.Add(property, value);
+                _properties[property] = value;
+                _UpdateDoc();
             }
         }
 
-        public string EncodedValue
+        public void AddAdditionalPart(ILicensePart part)
+        {
+            _additionalParts.Add(part);
+            _UpdateDoc();
+        }
+
+        public void RemoveAdditionalPart(ILicensePart part)
+        {
+            _additionalParts.Remove(part);
+            _UpdateDoc();
+        }
+
+        private void _UpdateDoc()
+        {
+            if (!_readonly)
+            {
+                lock (_currentDoc)
+                {
+                    _currentDoc.LoadXml(_emptyDoc);
+                    XmlNode coreNode = _currentDoc.ChildNodes[1];
+                    foreach (ILicensePart ilp in _AllParts)
+                    {
+                        if (!ilp.IsEmpty)
+                            coreNode.AppendChild(ilp.ToElement(_currentDoc));
+                    }
+                }
+            }
+            else
+            {
+                _ReloadEntities();
+            }
+        }
+
+        private void _ReloadEntities()
+        {
+            ILicensePart[] parts = _AllParts;
+            foreach (XmlNode n in _currentDoc.ChildNodes[1].ChildNodes)
+            {
+                if (n.NodeType == XmlNodeType.Element)
+                {
+                    for (int x = 0; x < parts.Length; x++)
+                    {
+                        if (parts[x].CanLoad((XmlElement)n))
+                        {
+                            parts[x].Load((XmlElement)n);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        private byte[] _BinaryValue
+        {
+            get { return System.Text.UTF8Encoding.UTF8.GetBytes(_currentDoc.OuterXml); }
+            set { _currentDoc.LoadXml(System.Text.UTF8Encoding.UTF8.GetString(value)); }
+        }
+
+        private byte[] _CompressedValue
         {
             get
             {
-                Hashtable data = new Hashtable();
-                if (_serialNumbers.Count>0)
+                MemoryStream ms = new MemoryStream();
+                BinaryWriter bw = new BinaryWriter(new GZipStream(ms, CompressionLevel.Optimal, false));
+                bw.Write(_BinaryValue);
+                bw.Flush();
+                bw.Close();
+                return ms.ToArray();
+            }
+            set
+            {
+                MemoryStream ms = new MemoryStream();
+                BinaryWriter bw = new BinaryWriter(ms);
+                BinaryReader br = new BinaryReader(new GZipStream(new MemoryStream(value), CompressionMode.Decompress));
+                while (true)
                 {
-                    ArrayList serials = new ArrayList();
-                    foreach (SerialNumber sn in _serialNumbers)
-                        serials.Add(sn.ToString());
-                    data.Add("SerialNumbers", serials);
+                    byte[] data = br.ReadBytes(4096);
+                    if (data.Length!=0)
+                        bw.Write(data);
+                    if (data.Length < 4096)
+                        break;
                 }
-                if (_validStart.HasValue)
-                    data.Add("ValidStart", _validStart);
-                if (_validEnd.HasValue)
-                    data.Add("ValidEnd", _validEnd);
-                if (_attributes.Count > 0)
-                    data.Add("Properties", _attributes);
-                string sdata = JSON.JsonEncode(data);
-                return sdata+Convert.ToBase64String(new SHA512Managed().ComputeHash(System.Text.ASCIIEncoding.ASCII.GetBytes(sdata)));
+                bw.Flush();
+                br.Close();
+                _BinaryValue = ms.ToArray();
             }
         }
 
-        public void Decode(string encodedLicense,out bool isValid)
+        private byte[] Sign(string privateKey)
         {
-            string sdata = encodedLicense.Substring(0, encodedLicense.LastIndexOf("}") + 1);
-            string hash = encodedLicense.Substring(encodedLicense.LastIndexOf("}") + 1);
-            isValid = hash == Convert.ToBase64String(new SHA512Managed().ComputeHash(System.Text.ASCIIEncoding.ASCII.GetBytes(sdata)));
-            if (isValid)
+            RSA rsa = RSACryptoServiceProvider.Create(Constants.RSAKeySize);
+            rsa.ImportParameters(Utility.ConvertStringToKey(privateKey));
+            return rsa.SignData(_BinaryValue, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1);
+        }
+
+        public string Encode(string privateKey)
+        {
+            MemoryStream ms = new MemoryStream();
+            BinaryWriter bw = new BinaryWriter(ms);
+            byte[] chunk = _CompressedValue;
+            bw.Write(chunk.Length);
+            bw.Write(chunk);
+            chunk = Sign(privateKey);
+            bw.Write(chunk.Length);
+            bw.Write(chunk);
+            bw.Flush();
+            bw.Close();
+            return Convert.ToBase64String(ms.ToArray());
+        }
+
+        public void Load(string data,string publicKey,out bool isValid)
+        {
+            isValid = false;
+            try
             {
-                try
+                BinaryReader br = new BinaryReader(new MemoryStream(Convert.FromBase64String(data)));
+                _CompressedValue = br.ReadBytes(br.ReadInt32());
+                byte[] sig = br.ReadBytes(br.ReadInt32());
+                RSA rsa = RSACryptoServiceProvider.Create(Constants.RSAKeySize);
+                rsa.ImportParameters(Utility.ConvertStringToKey(publicKey));
+                isValid = rsa.VerifyData(_BinaryValue, sig, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1);
+                if (isValid)
                 {
-                    Hashtable tmp = (Hashtable)JSON.JsonDecode(sdata);
-                    if (tmp.ContainsKey("SerialNumbers"))
+                    _ReloadEntities();
+                    if (StartDate.HasValue)
                     {
-                        foreach (string str in (ArrayList)tmp["SerialNumbers"])
-                        {
-                            _serialNumbers.Add((SerialNumber)str);
-                        }
+                        if (DateTime.Now.Ticks < StartDate.Value.Ticks)
+                            isValid = false;
                     }
-                    if (tmp.ContainsKey("ValidStart"))
-                        _validStart = (DateTime)tmp["ValidStart"];
-                    if (tmp.ContainsKey("ValidEnd"))
-                        _validEnd = (DateTime)tmp["ValidEnd"];
-                    if (tmp.ContainsKey("Properties"))
+                    if (isValid && EndDate.HasValue)
                     {
-                        foreach (string str in (Hashtable)tmp["Properties"])
-                        {
-                            _attributes.Add(str, ((Hashtable)tmp["Properties"])[str]);
-                        }
+                        if (DateTime.Now.Ticks > EndDate.Value.Ticks)
+                            isValid = false;
                     }
-                    if (_validStart.HasValue)
-                        isValid = _validStart.Value.Ticks >= DateTime.Now.Ticks;
-                    if (_validEnd.HasValue && isValid)
-                        isValid = _validEnd.Value.Ticks <= DateTime.Now.Ticks;
                 }
-                catch (Exception e)
-                {
-                    isValid = false;
-                }
+            }
+            catch(Exception e)
+            {
+                isValid = false;
+                throw new Exception("Invalid License String");
             }
         }
     }
