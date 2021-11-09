@@ -4,6 +4,21 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <AssemblyName>LicenseGenerator</AssemblyName>
     <RootNamespace>Org.Reddragonit.LicenseGenerator</RootNamespace>
+    <PackageId>Org.Reddragonit.LicenseGenerator</PackageId>
+    <Authors>Roger C</Authors>
+    <Description>A Dotnet library designed to build, sign and verify product licenses.  Has the ability to add multiple serial numbers (for add-ons), as well as be extended by implementing and adding ILicensePart to the license.</Description>
+    <PackageProjectUrl>https://github.com/roger-castaldo/LicenseGenerator</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/roger-castaldo/LicenseGenerator</RepositoryUrl>
+    <RepositoryType>github</RepositoryType>
+    <PackageTags>dotnet license</PackageTags>
+    <PackageReleaseNotes>initial release of tested basic license and signer</PackageReleaseNotes>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
 
 </Project>
