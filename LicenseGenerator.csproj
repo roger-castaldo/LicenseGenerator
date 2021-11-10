@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
@@ -11,7 +11,8 @@
     <RepositoryUrl>https://github.com/roger-castaldo/LicenseGenerator</RepositoryUrl>
     <RepositoryType>github</RepositoryType>
     <PackageTags>dotnet license</PackageTags>
-    <PackageReleaseNotes>initial release of tested basic license and signer</PackageReleaseNotes>
+    <PackageReleaseNotes>moved the key pair generator call to a static function</PackageReleaseNotes>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,5 +21,11 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
+
+  <PropertyGroup>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <Version>1.0.1</Version>
+  </PropertyGroup>
 
 </Project>

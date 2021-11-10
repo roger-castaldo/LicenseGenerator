@@ -63,7 +63,7 @@ namespace Org.Reddragonit.LicenseGenerator
             set { _license[property] = value; }
         }
 
-        public void GenerateKeyPair(out string publicKey,out string privateKey)
+        public static void GenerateKeyPair(out string publicKey,out string privateKey)
         {
             RSACryptoServiceProvider csp = new RSACryptoServiceProvider(Constants.RSAKeySize);
             publicKey = Utility.ConvertKeyToString(csp.ExportParameters(false));
