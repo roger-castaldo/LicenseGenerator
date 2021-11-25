@@ -11,7 +11,7 @@
     <RepositoryUrl>https://github.com/roger-castaldo/LicenseGenerator</RepositoryUrl>
     <RepositoryType>github</RepositoryType>
     <PackageTags>dotnet license</PackageTags>
-    <PackageReleaseNotes>moved the key pair generator call to a static function</PackageReleaseNotes>
+    <PackageReleaseNotes>added functionality to create a license file that contains both the public key and the license key for verification</PackageReleaseNotes>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
   </PropertyGroup>
 
@@ -25,7 +25,7 @@
   <PropertyGroup>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
   </PropertyGroup>
 
 </Project>

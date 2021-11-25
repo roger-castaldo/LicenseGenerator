@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -87,6 +88,27 @@ namespace Org.Reddragonit.LicenseGenerator
                 if (_privateKey == null)
                     GenerateKeyPair(out _publicKey, out _privateKey);
                 return _license.Encode(_privateKey);
+            }
+        }
+
+        public byte[] LicenseFile
+        {
+            get
+            {
+                MemoryStream ms = new MemoryStream();
+                ZipArchive za = new ZipArchive(ms, ZipArchiveMode.Create);
+                ZipArchiveEntry lic = za.CreateEntry(Constants.LicenseFileName, CompressionLevel.Optimal);
+                StreamWriter sw = new StreamWriter(lic.Open());
+                sw.Write(LicenseString);
+                sw.Flush();
+                sw.Close();
+                ZipArchiveEntry key = za.CreateEntry(Constants.KeyFileName, CompressionLevel.Optimal);
+                sw = new StreamWriter(key.Open());
+                sw.WriteLine(_publicKey);
+                sw.Flush();
+                sw.Close();
+                za.Dispose();
+                return ms.ToArray();
             }
         }
     }

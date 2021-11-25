@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -19,6 +20,49 @@ namespace Org.Reddragonit.LicenseGenerator
         public SignedLicense(string licenseString,string publicKey,ILicensePart[] parts,out bool isValid)
         {
             _license = new License(true);
+            _license.Load(licenseString, publicKey, out _isValid);
+            if (parts != null)
+            {
+                foreach (ILicensePart ilp in parts)
+                    _license.AddAdditionalPart(ilp);
+            }
+            isValid = _isValid;
+        }
+
+        public SignedLicense(byte[] licenseFile, out bool isValid)
+            : this(licenseFile,null,out isValid) { }
+
+        public SignedLicense(byte[] licenseFile, ILicensePart[] parts, out bool isValid)
+        {
+            _license = new License(true);
+            string licenseString = null;
+            string publicKey = null;
+            try
+            {
+                ZipArchive za = new ZipArchive(new MemoryStream(licenseFile), ZipArchiveMode.Read);
+                StreamReader sr;
+                foreach (ZipArchiveEntry zae in za.Entries)
+                {
+                    if (zae.Name == Constants.LicenseFileName)
+                    {
+                        sr = new StreamReader(zae.Open());
+                        licenseString = sr.ReadToEnd();
+                        sr.Close();
+                    }
+                    else if (zae.Name == Constants.KeyFileName)
+                    {
+                        sr = new StreamReader(zae.Open());
+                        publicKey = sr.ReadToEnd();
+                        sr.Close();
+                    }
+                }
+            }catch(Exception e)
+            {
+                licenseString = null;
+                publicKey = null;
+            }
+            if (licenseString == null || publicKey == null)
+                throw new FileLoadException("The license file specified is not valid and not loadable");
             _license.Load(licenseString, publicKey, out _isValid);
             if (parts != null)
             {

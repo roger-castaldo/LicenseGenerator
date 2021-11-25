@@ -8,5 +8,7 @@ namespace Org.Reddragonit.LicenseGenerator
     {
         public const int RSAKeySize = 2048;
         public const string ValidCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        public const string KeyFileName = "pkey";
+        public const string LicenseFileName = "lic";
     }
 }
