@@ -105,5 +105,10 @@ namespace Org.Reddragonit.LicenseGenerator
         {
             get { return _license.AdditionalParts; }
         }
+
+        public bool Validate(string publicKey)
+        {
+            return _license.Verify(publicKey);
+        }
     }
 }

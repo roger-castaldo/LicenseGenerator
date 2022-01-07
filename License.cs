@@ -29,6 +29,7 @@ namespace Org.Reddragonit.LicenseGenerator
         private StartDate _startDate=null;
         private EndDate _endDate=null;
         private CustomProperties _properties = null;
+        private byte[] _loadedSig;
 
         private ILicensePart[] _AllParts
         {
@@ -216,10 +217,10 @@ namespace Org.Reddragonit.LicenseGenerator
             {
                 BinaryReader br = new BinaryReader(new MemoryStream(Convert.FromBase64String(data)));
                 _CompressedValue = br.ReadBytes(br.ReadInt32());
-                byte[] sig = br.ReadBytes(br.ReadInt32());
+                _loadedSig = br.ReadBytes(br.ReadInt32());
                 RSA rsa = RSACryptoServiceProvider.Create(Constants.RSAKeySize);
                 rsa.ImportParameters(Utility.ConvertStringToKey(publicKey));
-                isValid = rsa.VerifyData(_BinaryValue, sig, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1);
+                isValid = rsa.VerifyData(_BinaryValue, _loadedSig, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1);
                 if (isValid)
                 {
                     _ReloadEntities();
@@ -239,6 +240,19 @@ namespace Org.Reddragonit.LicenseGenerator
             {
                 isValid = false;
                 throw new Exception("Invalid License String");
+            }
+        }
+
+        public bool Verify(string publicKey)
+        {
+            try
+            {
+                RSA rsa = RSACryptoServiceProvider.Create(Constants.RSAKeySize);
+                rsa.ImportParameters(Utility.ConvertStringToKey(publicKey));
+                return rsa.VerifyData(_BinaryValue, _loadedSig, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1);
+            }catch(Exception e)
+            {
+                return false;
             }
         }
     }
