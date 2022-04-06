@@ -190,7 +190,12 @@ namespace Org.Reddragonit.LicenseGenerator
 
         private byte[] Sign(string privateKey)
         {
+#if NETFRAMEWORK
+            RSA rsa = RSACryptoServiceProvider.Create();
+            rsa.KeySize = Constants.RSAKeySize;
+#else
             RSA rsa = RSACryptoServiceProvider.Create(Constants.RSAKeySize);
+#endif
             rsa.ImportParameters(Utility.ConvertStringToKey(privateKey));
             return rsa.SignData(_BinaryValue, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1);
         }
@@ -218,7 +223,12 @@ namespace Org.Reddragonit.LicenseGenerator
                 BinaryReader br = new BinaryReader(new MemoryStream(Convert.FromBase64String(data)));
                 _CompressedValue = br.ReadBytes(br.ReadInt32());
                 _loadedSig = br.ReadBytes(br.ReadInt32());
+#if NETFRAMEWORK
+            RSA rsa = RSACryptoServiceProvider.Create();
+            rsa.KeySize = Constants.RSAKeySize;
+#else
                 RSA rsa = RSACryptoServiceProvider.Create(Constants.RSAKeySize);
+#endif
                 rsa.ImportParameters(Utility.ConvertStringToKey(publicKey));
                 isValid = rsa.VerifyData(_BinaryValue, _loadedSig, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1);
                 if (isValid)
@@ -247,7 +257,12 @@ namespace Org.Reddragonit.LicenseGenerator
         {
             try
             {
+#if NETFRAMEWORK
+            RSA rsa = RSACryptoServiceProvider.Create();
+            rsa.KeySize = Constants.RSAKeySize;
+#else
                 RSA rsa = RSACryptoServiceProvider.Create(Constants.RSAKeySize);
+#endif
                 rsa.ImportParameters(Utility.ConvertStringToKey(publicKey));
                 return rsa.VerifyData(_BinaryValue, _loadedSig, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1);
             }catch(Exception e)
