@@ -249,7 +249,7 @@ namespace Org.Reddragonit.LicenseGenerator
             catch(Exception e)
             {
                 isValid = false;
-                throw new Exception("Invalid License String");
+                throw new Exception("Invalid License String",e);
             }
         }
 

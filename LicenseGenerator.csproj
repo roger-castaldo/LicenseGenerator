@@ -28,6 +28,7 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <Version>1.0.4</Version>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
   </PropertyGroup>
 
 </Project>
