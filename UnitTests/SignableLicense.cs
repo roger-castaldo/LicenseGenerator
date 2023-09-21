@@ -16,12 +16,8 @@ namespace UnitTests
         [TestMethod]
         public void TestKeyPairs()
         {
-            string pub1;
-            string pri1;
-            Org.Reddragonit.LicenseGenerator.SignableLicense.GenerateKeyPair(out pub1, out pri1);
-            string pub2;
-            string pri2;
-            Org.Reddragonit.LicenseGenerator.SignableLicense.GenerateKeyPair(out pub2, out pri2);
+            Org.Reddragonit.LicenseGenerator.SignableLicense.GenerateKeyPair(out var pub1, out var pri1);
+            Org.Reddragonit.LicenseGenerator.SignableLicense.GenerateKeyPair(out var pub2, out var pri2);
             Assert.AreNotEqual(pub1, pub2);
             Assert.AreNotEqual(pri1, pri2);
         }
@@ -29,22 +25,25 @@ namespace UnitTests
         [TestMethod]
         public void TestUniqueSignatures()
         {
-            string pub;
-            string pri;
-            Org.Reddragonit.LicenseGenerator.SignableLicense.GenerateKeyPair(out pub, out pri);
-            Org.Reddragonit.LicenseGenerator.SignableLicense sl1 = new Org.Reddragonit.LicenseGenerator.SignableLicense();
-            sl1.StartDate = DateTime.Now;
+            Org.Reddragonit.LicenseGenerator.SignableLicense.GenerateKeyPair(out var pub, out var pri);
+            Org.Reddragonit.LicenseGenerator.SignableLicense sl1 = new()
+            {
+                StartDate = DateTime.Now,
+                EndDate = DateTime.Now.AddDays(30),
+                PrivateKey=pri,
+                PublicKey=pub
+            };
             sl1.AddApplication("Testing1234");
-            sl1.EndDate = DateTime.Now.AddDays(30);
-            sl1.PrivateKey = pri;
-            sl1.PublicKey = pub;
 
-            Org.Reddragonit.LicenseGenerator.SignableLicense sl2 = new Org.Reddragonit.LicenseGenerator.SignableLicense();
-            sl2.StartDate = sl1.StartDate.Value.AddMilliseconds(100);
+            Org.Reddragonit.LicenseGenerator.SignableLicense sl2 = new()
+            {
+                StartDate = sl1.StartDate.Value.AddMilliseconds(100),
+                EndDate=sl1.EndDate,
+                PrivateKey=pri,
+                PublicKey=pub
+            };
             sl2.AddApplication("Testing1234");
-            sl2.EndDate = sl1.EndDate;
-            sl2.PrivateKey=pri;
-            sl1.PublicKey=pub;
+            
 
             Assert.AreNotEqual(sl1.LicenseString, sl2.LicenseString);
             Assert.AreNotEqual(Convert.ToBase64String(sl1.LicenseFile),Convert.ToBase64String(sl2.LicenseFile));
@@ -53,7 +52,7 @@ namespace UnitTests
         [TestMethod]
         public void TestProperties()
         {
-            Org.Reddragonit.LicenseGenerator.SignableLicense sl = new Org.Reddragonit.LicenseGenerator.SignableLicense();
+            Org.Reddragonit.LicenseGenerator.SignableLicense sl = new();
 
             sl["TestNumber"] = 12;
             Assert.AreEqual(12, sl["TestNumber"]);
@@ -63,7 +62,7 @@ namespace UnitTests
         [TestMethod]
         public void TestAdditionalParts()
         {
-            Org.Reddragonit.LicenseGenerator.SignableLicense sl = new Org.Reddragonit.LicenseGenerator.SignableLicense();
+            Org.Reddragonit.LicenseGenerator.SignableLicense sl = new();
             sl.AddAdditionalPart(new TestAdditionalPart("Testing1234"));
             Assert.IsTrue(sl.AdditionalParts.Length==1);
             Assert.IsTrue(sl.AdditionalParts[0] is TestAdditionalPart);

@@ -22,13 +22,13 @@ namespace Org.Reddragonit.LicenseGenerator.LicenseParts
 
         public void Load(XmlElement element)
         {
-            _value = DateTime.Parse(element.InnerText);
+            _value = new DateTime(long.Parse(element.InnerText));
         }
 
         public XmlElement ToElement(XmlDocument document)
         {
             XmlElement ret = document.CreateElement(ELEMENT_NAME);
-            ret.InnerText = _value.ToString();
+            ret.InnerText = _value?.Ticks.ToString();
             return ret;
         }
 

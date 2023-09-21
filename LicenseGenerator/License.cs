@@ -16,22 +16,22 @@ namespace Org.Reddragonit.LicenseGenerator
         private const string _emptyDoc = @"<?xml version=""1.0""?>
 <license>
 </license>";
-        private bool _readonly;
-        private XmlDocument _currentDoc = new XmlDocument();
+        private readonly bool _readonly;
+        private readonly XmlDocument _currentDoc = new();
 
-        private List<ILicensePart> _additionalParts;
+        private readonly List<ILicensePart> _additionalParts;
         public ILicensePart[] AdditionalParts
         {
             get { return _additionalParts.ToArray(); }
         }
 
-        private SerialNumbers _serialNumbers=null;
-        private StartDate _startDate=null;
-        private EndDate _endDate=null;
-        private CustomProperties _properties = null;
+        private readonly SerialNumbers _serialNumbers=null;
+        private readonly StartDate _startDate=null;
+        private readonly EndDate _endDate=null;
+        private readonly CustomProperties _properties = null;
         private byte[] _loadedSig;
 
-        private ILicensePart[] _AllParts
+        private ILicensePart[] AllParts
         {
             get
             {
@@ -62,7 +62,7 @@ namespace Org.Reddragonit.LicenseGenerator
             get { return _startDate.Value; }
             set { 
                 _startDate.Value = value;
-                _UpdateDoc();
+                UpdateDoc();
             }
         }
 
@@ -71,48 +71,42 @@ namespace Org.Reddragonit.LicenseGenerator
             get { return _endDate.Value; }
             set { 
                 _endDate.Value = value;
-                _UpdateDoc();
+                UpdateDoc();
             }
         }
 
         public void AddApplication(string applicationID)
         {
             _serialNumbers.AddSerialNumber(applicationID);
-            _UpdateDoc();
+            UpdateDoc();
         }
 
-        public bool HasApplication(string applicationID)
-        {
-            return _serialNumbers.HasApplication(applicationID);
-        }
+        public bool HasApplication(string applicationID) => _serialNumbers.HasApplication(applicationID);
 
-        internal bool HasSerialNumber(string serialNumber)
-        {
-            return _serialNumbers.HasSerialNumber(serialNumber);
-        }
+        internal bool HasSerialNumber(string serialNumber) => _serialNumbers.HasSerialNumber(serialNumber);
 
         public object this[string property]
         {
             get { return _properties[property]; }
             set { 
                 _properties[property] = value;
-                _UpdateDoc();
+                UpdateDoc();
             }
         }
 
         public void AddAdditionalPart(ILicensePart part)
         {
             _additionalParts.Add(part);
-            _UpdateDoc();
+            UpdateDoc();
         }
 
         public void RemoveAdditionalPart(ILicensePart part)
         {
             _additionalParts.Remove(part);
-            _UpdateDoc();
+            UpdateDoc();
         }
 
-        private void _UpdateDoc()
+        private void UpdateDoc()
         {
             if (!_readonly)
             {
@@ -120,7 +114,7 @@ namespace Org.Reddragonit.LicenseGenerator
                 {
                     _currentDoc.LoadXml(_emptyDoc);
                     XmlNode coreNode = _currentDoc.ChildNodes[1];
-                    foreach (ILicensePart ilp in _AllParts)
+                    foreach (ILicensePart ilp in AllParts)
                     {
                         if (!ilp.IsEmpty)
                             coreNode.AppendChild(ilp.ToElement(_currentDoc));
@@ -129,13 +123,13 @@ namespace Org.Reddragonit.LicenseGenerator
             }
             else
             {
-                _ReloadEntities();
+                ReloadEntities();
             }
         }
 
-        private void _ReloadEntities()
+        private void ReloadEntities()
         {
-            ILicensePart[] parts = _AllParts;
+            ILicensePart[] parts = AllParts;
             foreach (XmlNode n in _currentDoc.ChildNodes[1].ChildNodes)
             {
                 if (n.NodeType == XmlNodeType.Element)
@@ -152,28 +146,30 @@ namespace Org.Reddragonit.LicenseGenerator
             }
         }
 
-        private byte[] _BinaryValue
+        private byte[] BinaryValue
         {
             get { return System.Text.UTF8Encoding.UTF8.GetBytes(_currentDoc.OuterXml); }
             set { _currentDoc.LoadXml(System.Text.UTF8Encoding.UTF8.GetString(value)); }
         }
 
-        private byte[] _CompressedValue
+        private byte[] CompressedValue
         {
             get
             {
-                MemoryStream ms = new MemoryStream();
-                BinaryWriter bw = new BinaryWriter(new GZipStream(ms, CompressionLevel.Optimal, false));
-                bw.Write(_BinaryValue);
+                MemoryStream ms = new();
+                BinaryWriter bw = new(new GZipStream(ms, CompressionLevel.Optimal, false));
+                bw.Write(BinaryValue);
                 bw.Flush();
                 bw.Close();
-                return ms.ToArray();
+                var result = ms.ToArray();
+                ms.Dispose();
+                return result;
             }
             set
             {
-                MemoryStream ms = new MemoryStream();
-                BinaryWriter bw = new BinaryWriter(ms);
-                BinaryReader br = new BinaryReader(new GZipStream(new MemoryStream(value), CompressionMode.Decompress));
+                MemoryStream ms = new();
+                BinaryWriter bw = new(ms);
+                BinaryReader br = new(new GZipStream(new MemoryStream(value), CompressionMode.Decompress));
                 while (true)
                 {
                     byte[] data = br.ReadBytes(4096);
@@ -184,27 +180,23 @@ namespace Org.Reddragonit.LicenseGenerator
                 }
                 bw.Flush();
                 br.Close();
-                _BinaryValue = ms.ToArray();
+                BinaryValue = ms.ToArray();
+                ms.Dispose();
             }
         }
 
         private byte[] Sign(string privateKey)
         {
-#if NETFRAMEWORK
-            RSA rsa = RSACryptoServiceProvider.Create();
-            rsa.KeySize = Constants.RSAKeySize;
-#else
-            RSA rsa = RSACryptoServiceProvider.Create(Constants.RSAKeySize);
-#endif
+            var rsa = RSACryptoServiceProvider.Create(Constants.RSAKeySize);
             rsa.ImportParameters(Utility.ConvertStringToKey(privateKey));
-            return rsa.SignData(_BinaryValue, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1);
+            return rsa.SignData(BinaryValue, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1);
         }
 
         public string Encode(string privateKey)
         {
-            MemoryStream ms = new MemoryStream();
-            BinaryWriter bw = new BinaryWriter(ms);
-            byte[] chunk = _CompressedValue;
+            MemoryStream ms = new();
+            BinaryWriter bw = new(ms);
+            byte[] chunk = CompressedValue;
             bw.Write(chunk.Length);
             bw.Write(chunk);
             chunk = Sign(privateKey);
@@ -212,28 +204,24 @@ namespace Org.Reddragonit.LicenseGenerator
             bw.Write(chunk);
             bw.Flush();
             bw.Close();
-            return Convert.ToBase64String(ms.ToArray());
+            var result = Convert.ToBase64String(ms.ToArray());
+            ms.Dispose();
+            return result;
         }
 
         public void Load(string data,string publicKey,out bool isValid)
         {
-            isValid = false;
             try
             {
-                BinaryReader br = new BinaryReader(new MemoryStream(Convert.FromBase64String(data)));
-                _CompressedValue = br.ReadBytes(br.ReadInt32());
-                _loadedSig = br.ReadBytes(br.ReadInt32());
-#if NETFRAMEWORK
-            RSA rsa = RSACryptoServiceProvider.Create();
-            rsa.KeySize = Constants.RSAKeySize;
-#else
-                RSA rsa = RSACryptoServiceProvider.Create(Constants.RSAKeySize);
-#endif
-                rsa.ImportParameters(Utility.ConvertStringToKey(publicKey));
-                isValid = rsa.VerifyData(_BinaryValue, _loadedSig, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1);
+                using (BinaryReader br = new(new MemoryStream(Convert.FromBase64String(data))))
+                {
+                    CompressedValue = br.ReadBytes(br.ReadInt32());
+                    _loadedSig = br.ReadBytes(br.ReadInt32());
+                }
+                isValid = Verify(publicKey);
                 if (isValid)
                 {
-                    _ReloadEntities();
+                    ReloadEntities();
                     if (StartDate.HasValue)
                     {
                         if (DateTime.Now.Ticks < StartDate.Value.Ticks)
@@ -257,15 +245,10 @@ namespace Org.Reddragonit.LicenseGenerator
         {
             try
             {
-#if NETFRAMEWORK
-            RSA rsa = RSACryptoServiceProvider.Create();
-            rsa.KeySize = Constants.RSAKeySize;
-#else
                 RSA rsa = RSACryptoServiceProvider.Create(Constants.RSAKeySize);
-#endif
                 rsa.ImportParameters(Utility.ConvertStringToKey(publicKey));
-                return rsa.VerifyData(_BinaryValue, _loadedSig, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1);
-            }catch(Exception e)
+                return rsa.VerifyData(BinaryValue, _loadedSig, HashAlgorithmName.SHA512, RSASignaturePadding.Pkcs1);
+            }catch(Exception)
             {
                 return false;
             }

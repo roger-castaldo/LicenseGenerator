@@ -5,6 +5,8 @@ using System.IO;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Org.Reddragonit.LicenseGenerator
 {
@@ -15,8 +17,8 @@ namespace Org.Reddragonit.LicenseGenerator
     /// </summary>
     public class SignedLicense
     {
-        private License _license;
-        private bool _isValid;
+        private readonly License _license;
+        private readonly bool _isValid;
 
         /// <summary>
         /// Create a signed license instance supplying the license string and the public key
@@ -51,7 +53,8 @@ namespace Org.Reddragonit.LicenseGenerator
             string publicKey = null;
             try
             {
-                ZipArchive za = new ZipArchive(new MemoryStream(licenseFile), ZipArchiveMode.Read);
+                using MemoryStream ms = new(licenseFile);
+                ZipArchive za = new(ms, ZipArchiveMode.Read);
                 StreamReader sr;
                 foreach (ZipArchiveEntry zae in za.Entries)
                 {
@@ -68,7 +71,7 @@ namespace Org.Reddragonit.LicenseGenerator
                         sr.Close();
                     }
                 }
-            }catch(Exception e)
+            }catch(Exception)
             {
                 licenseString = null;
                 publicKey = null;
@@ -90,9 +93,7 @@ namespace Org.Reddragonit.LicenseGenerator
         /// <param name="applicationID">The unique ID for the application that would have been added by the signable license</param>
         /// <returns>true if the license contains the application id</returns>
         public bool HasApplication(string applicationID)
-        {
-            return _isValid && _license.HasApplication(applicationID);
-        }
+            =>_isValid && _license.HasApplication(applicationID);
 
         /// <summary>
         /// Called to see if a license has a given serial number linked in it
@@ -100,34 +101,29 @@ namespace Org.Reddragonit.LicenseGenerator
         /// <param name="serialNumber">The serial number string (must be created from the SerialNumber class)</param>
         /// <returns>true if the license contains the given serial number</returns>
         public bool HasSerialNumber(string serialNumber)
-        {
-            return _isValid && _license.HasSerialNumber(serialNumber);
-        }
+            => _isValid && _license.HasSerialNumber(serialNumber);
 
         /// <summary>
         /// Houses the Starting Date (if it was set during creation) that the license is valid from.
         /// </summary>
         public DateTime? StartDate
-        {
-            get { return _license.StartDate; }
-        }
+            => _license.StartDate; 
 
         /// <summary>
         /// Houses the Ending Date (if it was set during creation) that the license is valid until.
         /// </summary>
         public DateTime? EndDate
-        {
-            get { return _license.EndDate; }
-        }
+            => _license.EndDate; 
 
         /// <summary>
         /// Called to obtain property values that were set as additional properties within this license during its creation.
         /// </summary>
         /// <param name="property">The name of the property in question</param>
         /// <returns>The value of the property, if it exists within the license or a null.</returns>
-        public object this[string property]
+        public T GetProperty<T>(string property)
         {
-            get { return _license[property]; }
+            var result = _license[property];
+            return result==null ? throw new KeyNotFoundException() : result is JsonElement element ? element.Deserialize<T>() : (T)result;
         }
 
         /// <summary>
@@ -135,17 +131,13 @@ namespace Org.Reddragonit.LicenseGenerator
         /// </summary>
         /// <param name="part">The implmentation of a ILicensePart</param>
         public void AddAdditionalPart(ILicensePart part)
-        {
-            _license.AddAdditionalPart(part);
-        }
+            => _license.AddAdditionalPart(part);
 
         /// <summary>
         /// Called to return all ILicenseParts that exist within the license
         /// </summary>
         public ILicensePart[] AdditionalParts
-        {
-            get { return _license.AdditionalParts; }
-        }
+            => _license.AdditionalParts; 
 
         /// <summary>
         /// Called to validate the license against the supplied public key, this is used for additional verification when desired
@@ -153,8 +145,6 @@ namespace Org.Reddragonit.LicenseGenerator
         /// <param name="publicKey">The public key that was used to sign the license</param>
         /// <returns>true if its valid</returns>
         public bool Validate(string publicKey)
-        {
-            return _license.Verify(publicKey);
-        }
+            => _license.Verify(publicKey);
     }
 }

@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json;
 using System.Xml;
 
 namespace Org.Reddragonit.LicenseGenerator.LicenseParts
@@ -10,7 +11,7 @@ namespace Org.Reddragonit.LicenseGenerator.LicenseParts
     internal class CustomProperties : ILicensePart
     {
         private const string ELEMENT_NAME = "Properties";
-        private Dictionary<string, object> _values;
+        private Dictionary<string, object> _values = new();
         public object this[string property]
         {
             get { return (_values.ContainsKey(property) ? _values[property] : null); }
@@ -23,36 +24,22 @@ namespace Org.Reddragonit.LicenseGenerator.LicenseParts
             }
         }
 
-        public CustomProperties()
-        {
-            _values = new Dictionary<string, object>();
-        }
+        public CustomProperties() { }
 
-        public bool CanLoad(XmlElement element)
-        {
-            return element.Name == ELEMENT_NAME;
-        }
+        public bool CanLoad(XmlElement element) 
+            => element.Name == ELEMENT_NAME;
 
         public void Load(XmlElement element)
-        {
-            _values.Clear();
-            Hashtable ht = (Hashtable)JSON.JsonDecode(((XmlCDataSection)element.ChildNodes[0]).Data);
-            foreach (string key in ht.Keys)
-            {
-                _values.Add(key, ht[key]);
-            }
-        }
+            => _values = JsonSerializer.Deserialize<Dictionary<string, object>>(((XmlCDataSection)element.ChildNodes[0]).Data);
 
         public XmlElement ToElement(XmlDocument document)
         {
-            XmlElement ret = document.CreateElement(ELEMENT_NAME);
-            Hashtable tmp = new Hashtable();
-            foreach (string key in _values.Keys)
-                tmp.Add(key, _values[key]);
-            ret.AppendChild(document.CreateCDataSection(JSON.JsonEncode(tmp)));
+            var ret = document.CreateElement(ELEMENT_NAME);
+            ret.AppendChild(document.CreateCDataSection(JsonSerializer.Serialize(_values)));
             return ret;
         }
 
-        public bool IsEmpty { get { return _values.Count==0; } }
+        public bool IsEmpty
+            => _values.Count==0;
     }
 }

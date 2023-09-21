@@ -15,25 +15,15 @@ namespace Org.Reddragonit.LicenseGenerator
     /// </summary>
     public class SignableLicense
     {
-        private License _license;
-        private string _privateKey;
+        private readonly License _license;
         /// <summary>
         /// A string representing the private key from the RSA key pair
         /// </summary>
-        public string PrivateKey
-        {
-            get { return _privateKey; }
-            set { _privateKey = value; }
-        }
-        private string _publicKey;
+        public string PrivateKey { get; set; }
         /// <summary>
         /// A string representing the public key from the RSA key pair
         /// </summary>
-        public string PublicKey
-        {
-            get { return _publicKey;}
-            set { _publicKey = value; }
-        }
+        public string PublicKey { get; set; }
 
         /// <summary>
         /// Create a new signable license instance to build a license
@@ -46,7 +36,8 @@ namespace Org.Reddragonit.LicenseGenerator
         /// <summary>
         /// Returns an array of all the ILicenseParts that were added to the license
         /// </summary>
-        public ILicensePart[] AdditionalParts { get { return _license.AdditionalParts; } }
+        public ILicensePart[] AdditionalParts
+            => _license.AdditionalParts;
 
         /// <summary>
         /// Gets/Sets the optional start date for the datetime when this license will be valid.  Null
@@ -73,9 +64,7 @@ namespace Org.Reddragonit.LicenseGenerator
         /// </summary>
         /// <param name="applicationID">The unique ID of the application being license</param>
         public void AddApplication(string applicationID)
-        {
-            _license.AddApplication(applicationID);
-        }
+            => _license.AddApplication(applicationID);
 
         /// <summary>
         /// Add a serial number to the license.  This can be supplied as a SerialNumber created by the SerialNumber class 
@@ -84,9 +73,7 @@ namespace Org.Reddragonit.LicenseGenerator
         /// </summary>
         /// <param name="serialNumber">The serial number to add to the license</param>
         public void AddSerialNumber(string serialNumber)
-        {
-            _license.AddApplication(serialNumber);
-        }
+            => _license.AddApplication(serialNumber);
 
         /// <summary>
         /// Generates a Serial Number from an Application Name/ID
@@ -94,9 +81,7 @@ namespace Org.Reddragonit.LicenseGenerator
         /// <param name="applicationID">The name/ID of the application</param>
         /// <returns>An string representing the encoded serial number</returns>
         public static string GenerateSerialNumber(string applicationID)
-        {
-            return new SerialNumber(applicationID).ToString();
-        }
+            => new SerialNumber(applicationID).ToString();
 
         /// <summary>
         /// Called to get/set additional properties within the license.  These can be used 
@@ -119,7 +104,7 @@ namespace Org.Reddragonit.LicenseGenerator
         /// <param name="privateKey">The private key portion</param>
         public static void GenerateKeyPair(out string publicKey,out string privateKey)
         {
-            RSACryptoServiceProvider csp = new RSACryptoServiceProvider(Constants.RSAKeySize);
+            RSACryptoServiceProvider csp = new(Constants.RSAKeySize);
             publicKey = Utility.ConvertKeyToString(csp.ExportParameters(false));
             privateKey = Utility.ConvertKeyToString(csp.ExportParameters(true));
         }
@@ -129,18 +114,14 @@ namespace Org.Reddragonit.LicenseGenerator
         /// </summary>
         /// <param name="part">The ILicensePart implemented class</param>
         public void AddAdditionalPart(ILicensePart part)
-        {
-            _license.AddAdditionalPart(part);
-        }
+            => _license.AddAdditionalPart(part);
 
         /// <summary>
         /// Called to remove an additional part (implement ILicensePart) from the license
         /// </summary>
         /// <param name="part">The ILicensePart implement class</param>
         public void RemoveAdditionalPart(ILicensePart part)
-        {
-            _license.RemoveAdditionalPart(part);
-        }
+            => _license.RemoveAdditionalPart(part);
 
         /// <summary>
         /// Returns the encoded license string for this signable license.  This string 
@@ -150,9 +131,13 @@ namespace Org.Reddragonit.LicenseGenerator
         {
             get
             {
-                if (_privateKey == null)
-                    GenerateKeyPair(out _publicKey, out _privateKey);
-                return _license.Encode(_privateKey);
+                if (PrivateKey == null)
+                {
+                    GenerateKeyPair(out var publicKey, out var privateKey);
+                    PublicKey=publicKey;
+                    PrivateKey=privateKey;
+                }
+                return _license.Encode(PrivateKey);
             }
         }
 
@@ -165,16 +150,16 @@ namespace Org.Reddragonit.LicenseGenerator
         {
             get
             {
-                MemoryStream ms = new MemoryStream();
-                ZipArchive za = new ZipArchive(ms, ZipArchiveMode.Create);
-                ZipArchiveEntry lic = za.CreateEntry(Constants.LicenseFileName, CompressionLevel.Optimal);
-                StreamWriter sw = new StreamWriter(lic.Open());
+                using MemoryStream ms = new();
+                var za = new ZipArchive(ms, ZipArchiveMode.Create);
+                var lic = za.CreateEntry(Constants.LicenseFileName, CompressionLevel.Optimal);
+                var sw = new StreamWriter(lic.Open());
                 sw.Write(LicenseString);
                 sw.Flush();
                 sw.Close();
-                ZipArchiveEntry key = za.CreateEntry(Constants.KeyFileName, CompressionLevel.Optimal);
-                sw = new StreamWriter(key.Open());
-                sw.WriteLine(_publicKey);
+                var key = za.CreateEntry(Constants.KeyFileName, CompressionLevel.Optimal);
+                sw = new(key.Open());
+                sw.WriteLine(PublicKey);
                 sw.Flush();
                 sw.Close();
                 za.Dispose();
